@@ -34,11 +34,7 @@ namespace Sql2MongoDb
             }
             catch (Exception ex)
             {
-                if (OnError != null)
-                {
-                    OnError.Invoke(ex);
-                }
-
+                NotifyError(ex);
             }
         }
 
@@ -87,10 +83,7 @@ namespace Sql2MongoDb
             }
             catch (Exception ex)
             {
-                if (OnError != null)
-                {
-                    OnError.Invoke(ex);
-                }
+                NotifyError(ex);
 
             }
 
@@ -135,6 +128,16 @@ namespace Sql2MongoDb
                 result.Add(fieldName, i);
             }
             return result;
+        }
+
+        private void NotifyError(Exception ex)
+        {
+            if (OnError!= null)
+            {
+                OnError.Invoke(ex);
+
+            }
+
         }
     }
 }
