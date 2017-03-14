@@ -8,25 +8,25 @@ using MongoDB.Driver;
 
 namespace Sql2MongoDb
 {
-    public class Sql2MongoDb
+    public class Sql2MongoDbConverter
     {
         private static SqlConnection _sqlConnection;
         private static MongoClient _mongoClient;
         public event Action<Exception> OnError;
-        public Sql2MongoDb(SqlConnection sqlConnection, MongoClient mongoClient)
+        public Sql2MongoDbConverter(SqlConnection sqlConnection, MongoClient mongoClient)
         {
             _sqlConnection = sqlConnection;
             _mongoClient = mongoClient;
         }
 
-        public void ConvertTable(string sqlTableName,string mongoDataBaseName,string mongoCollectionName=null)
+        public void ConvertTable<T>(string sqlTableName,string mongoDataBaseName,string mongoCollectionName=null) where T:new()
         {
             try
             {
                 mongoCollectionName = string.IsNullOrEmpty(mongoCollectionName)? sqlTableName.Split('.').Last(): mongoCollectionName;
                 _sqlConnection.Open();
                 var db = _mongoClient.GetDatabase(mongoDataBaseName);
-                var collection = db.GetCollection<dynamic>(mongoCollectionName);
+                var collection = db.GetCollection<T>(mongoCollectionName);
                 ConvertTable(collection,sqlTableName);
                 _sqlConnection.Close();
                 _sqlConnection.Dispose();
@@ -36,32 +36,6 @@ namespace Sql2MongoDb
             {
                 NotifyError(ex);
             }
-        }
-
-        private void ConvertTable(IMongoCollection<dynamic> collection,string sqlTableName )
-        {
-            try
-            {
-                var selectCommand = new SqlCommand($"SELECT * FROM {sqlTableName};", _sqlConnection);
-                var dataReader = selectCommand.ExecuteReader();
-                if (!dataReader.HasRows)
-                {
-                    return;
-                }
-                var tableFields = GetTableFields(dataReader);
-                while (dataReader.Read())
-                {
-                    var row = GetRowData(dataReader, tableFields);
-                    collection.InsertOne(row);
-                }
-                selectCommand.Dispose();
-                dataReader.Dispose();
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-
         }
 
         public void ConvertDataBase(string sqlDatabaseName,string mongoDatabaseName=null)
@@ -84,12 +58,26 @@ namespace Sql2MongoDb
             catch (Exception ex)
             {
                 NotifyError(ex);
-
             }
-
-
         }
 
+        private void ConvertTable<T>(IMongoCollection<T> collection, string sqlTableName) where T:new()
+        {
+                var selectCommand = new SqlCommand($"SELECT * FROM {sqlTableName};", _sqlConnection);
+                var dataReader = selectCommand.ExecuteReader();
+                if (!dataReader.HasRows)
+                {
+                    return;
+                }
+                var tableFields = GetTableFields(dataReader);
+                while (dataReader.Read())
+                {
+                    var row = GetRowData<T>(dataReader, tableFields);
+                    collection.InsertOne(row);
+                }
+                selectCommand.Dispose();
+                dataReader.Dispose();
+        }
         private Dictionary<string,string> GetTablesOfDatabase(string databaseName)
         {
             var result = new Dictionary<string, string>();
@@ -107,16 +95,17 @@ namespace Sql2MongoDb
         }
 
 
-        private object GetRowData(IDataRecord dataReader, Dictionary<string, int> tableFields)
+        private T GetRowData<T>(IDataRecord dataReader, Dictionary<string, int> tableFields) where T:new()
         {
             dynamic result = new ExpandoObject();
+            var resultContainer = ((IDictionary<string, object>)result);
             foreach (var item in tableFields)
             {
                 var value = dataReader.GetValue(item.Value);
                 value = value is DBNull ? null : value;
-                ((IDictionary<string,object>)result).Add(item.Key,value);
+                resultContainer.Add(item.Key, value);
             }
-            return result;
+            return (T)result;
         }
 
         private Dictionary<string, int> GetTableFields(IDataRecord dataReader)
@@ -132,12 +121,7 @@ namespace Sql2MongoDb
 
         private void NotifyError(Exception ex)
         {
-            if (OnError!= null)
-            {
-                OnError.Invoke(ex);
-
-            }
-
+            OnError?.Invoke(ex);
         }
     }
 }
