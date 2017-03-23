@@ -19,8 +19,8 @@ namespace Sql2MongoDb
         }
         public string MongoCollectionName { get; set; }
         public string MongoCollectionIndex { get; set; }
-        public Func<object, object> PostProcess { get; set; }
-        public Func<object, bool> FilterProcess { get; set; }
+        public Func<dynamic, object> PostProcess { get; set; }
+        public Func<dynamic, bool> FilterProcess { get; set; }
 
 
     }
