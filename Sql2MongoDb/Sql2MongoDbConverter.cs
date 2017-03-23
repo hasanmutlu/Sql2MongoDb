@@ -102,16 +102,30 @@ namespace Sql2MongoDb
                 while (dataReader.Read())
                 {
                     var row = GetRowData(dataReader, tableFields);
-                    if (options.FilterProcess!=null)
+                    if (options.FilterProcess != null)
                     {
-                        if (!options.FilterProcess(row))
+                        try
                         {
-                            continue;
+                            if (!options.FilterProcess(row))
+                            {
+                                continue;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                        NotifyError(ex);
                         }
                     }
                     if (options.PostProcess != null)
                     {
-                        row = options.PostProcess(row);
+                        try
+                        {
+                            row = options.PostProcess(row);
+                        }
+                        catch (Exception ex)
+                        {
+                        NotifyError(ex);
+                        }
                     }
                     collection.InsertOne(row);
                 }
