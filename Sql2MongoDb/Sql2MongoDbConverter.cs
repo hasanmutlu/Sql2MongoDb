@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Dynamic;
 using MongoDB.Driver;
+using MongoDB.Bson;
 
 namespace Sql2MongoDb
 {
@@ -33,7 +34,6 @@ namespace Sql2MongoDb
                     ConvertTable(collection,new MongoConverterOptions {SqlTableName = table.Value});
                 }
                 _sqlConnection.Close();
-                _sqlConnection.Dispose();
 
             }
             catch (Exception ex)
@@ -77,11 +77,11 @@ namespace Sql2MongoDb
                 var collection = db.GetCollection<dynamic>(options.MongoCollectionName);
                 if (!string.IsNullOrEmpty(options.MongoCollectionIndex))
                 {
-                    collection.Indexes.CreateOne(options.MongoCollectionIndex);
+                    var index = Builders<dynamic>.IndexKeys.Ascending(options.MongoCollectionIndex);
+                    collection.Indexes.CreateOne(index);
                 }
                 ConvertTable(collection,options);
                 _sqlConnection.Close();
-                _sqlConnection.Dispose();
                 
             }
             catch (Exception ex)
@@ -104,28 +104,14 @@ namespace Sql2MongoDb
                     var row = GetRowData(dataReader, tableFields);
                     if (options.FilterProcess != null)
                     {
-                        try
-                        {
                             if (!options.FilterProcess(row))
                             {
                                 continue;
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                        NotifyError(ex);
-                        }
                     }
                     if (options.PostProcess != null)
                     {
-                        try
-                        {
                             row = options.PostProcess(row);
-                        }
-                        catch (Exception ex)
-                        {
-                        NotifyError(ex);
-                        }
                     }
                     collection.InsertOne(row);
                 }

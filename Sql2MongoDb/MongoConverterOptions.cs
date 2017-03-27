@@ -11,10 +11,10 @@ namespace Sql2MongoDb
         private string _mongoCollectionName;
         public string SqlTableName { get; set; }
         public string MongoDataBaseName {
-            get { return _mongoCollectionName; }
+            get { return string.IsNullOrEmpty(_mongoCollectionName)?SqlTableName:_mongoCollectionName; }
             set
             {
-                _mongoCollectionName = string.IsNullOrEmpty(value) ? value.Split('.').Last() : value;
+                _mongoCollectionName = string.IsNullOrEmpty(value) ? value?.Split('.').Last() : value;
             }
         }
         public string MongoCollectionName { get; set; }
